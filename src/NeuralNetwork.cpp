@@ -36,3 +36,10 @@ double ReLU(double input) {
 double Sigmoid(double input) {
 	return 1.0 / (1 + exp(-input));
 }
+double HyperbolicTangent(double input) {
+	double e2w = exp(2 * input);
+	return (e2w - 1) / (e2w + 1);
+}
+double SiLU(double input) {
+	return input / (1 + exp(-input));
+}

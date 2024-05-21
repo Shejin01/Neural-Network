@@ -23,3 +23,4 @@ public:
 
 double ReLU(double input);
 double Sigmoid(double input);
+double HyperbolicTangent(double input);

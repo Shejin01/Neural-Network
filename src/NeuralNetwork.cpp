@@ -30,6 +30,14 @@ std::vector<double> NeuralNetwork::CalculateOutput(std::vector<double> input, do
 	return input;
 }
 
+double NeuralNetwork::Cost(std::vector<double> actualOutput, std::vector<double> expectOutput) {
+	double cost = 0;
+	for (int i = 0; i < actualOutput.size(); i++) {
+		cost += pow(expectOutput[i] - actualOutput[i], 2);
+	}
+	return cost;
+}
+
 double ReLU(double input) {
 	return fmax(input, 0);
 }

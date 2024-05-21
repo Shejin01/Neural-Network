@@ -19,6 +19,7 @@ public:
 
 	NeuralNetwork(std::vector<int> numberOfNeurons);
 	std::vector<double> CalculateOutput(std::vector<double> input, double (*activationFunction)(double));
+	double Cost(std::vector<double> actualOutput, std::vector<double> expectOutput);
 };
 
 double ReLU(double input);

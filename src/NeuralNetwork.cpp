@@ -20,7 +20,9 @@ std::vector<double> Layer::FeedForward(std::vector<double>& input) {
 		for (int j = 0; j < numOfIncomingNodes; j++) {
 			output[i] += input[j] * weights[i][j];
 		}
+		weightedValues.push_back(output[i]);
 		output[i] = Sigmoid(output[i]);
+		activatedValues.push_back(output[i]);
 	}
 	return output;
 }
@@ -41,32 +43,56 @@ std::vector<double> NeuralNetwork::CalculateOutput(std::vector<double> input) {
 double NeuralNetwork::Cost(std::vector<double> actualOutput, std::vector<double> expectedOutput) {
 	double cost = 0;
 	for (int i = 0; i < actualOutput.size(); i++) {
-		cost += pow(expectedOutput[i] - actualOutput[i], 2);
+		cost += pow(actualOutput[i] - expectedOutput[i], 2);
 	}
 	return cost / actualOutput.size();
 }
 
-void NeuralNetwork::Learn(std::vector<double> trainingInputData, std::vector<double> expectedOutput, double learningRate) {
-	const double h = 0.0001;
-	double originalCost = Cost(CalculateOutput(trainingInputData), expectedOutput);
+double NeuralNetwork::CostDerivative(double actualOutput, double expectedOutput) {
+	return 2 * (actualOutput - expectedOutput);
+}
 
-	for (auto& layer : layers) {
-		for (int i = 0; i < layer.numOfNodes; i++) {
-			for (int j = 0; j < layer.numOfIncomingNodes; j++) {
-				layer.weights[i][j] += h;
-				double newCost = Cost(CalculateOutput(trainingInputData), expectedOutput);
-				layer.weights[i][j] -= h;
-				layer.weightCostGradient[i][j] = (newCost - originalCost) / h;
-			}
-		}
+double SigmoidDerivative(double input) {
+	return Sigmoid(input) * (1 - Sigmoid(input));
+}
 
-		for (int i = 0; i < layer.numOfNodes; i++) {
-			layer.biases[i] += h;
-			double newCost = Cost(CalculateOutput(trainingInputData), expectedOutput);
-			layer.biases[i] -= h;
-			layer.biasCostGradient[i] = (newCost - originalCost) / h;
+void Layer::UpdateGradient(std::vector<double> inputs) {
+	for (int i = 0; i < numOfNodes; i++) {
+		for (int j = 0; j < numOfIncomingNodes; j++) {
+			weightCostGradient[i][j] += inputs[j] * nodeValues[i];
 		}
+		biasCostGradient[i] += nodeValues[i];
 	}
+}
+
+void Layer::UpdateHiddenLayerNodeValues(Layer& oldLayer) {
+	nodeValues = std::vector<double>(numOfNodes, 0);
+	for (int i = 0; i < numOfNodes; i++) {
+		for (int j = 0; j < oldLayer.numOfNodes; j++) {
+			nodeValues[i] += oldLayer.nodeValues[j] * oldLayer.weights[i][j];
+		}
+		nodeValues[i] *= SigmoidDerivative(weightedValues[i]);
+	}
+}
+
+void NeuralNetwork::Learn(std::vector<double> trainingInputData, std::vector<double> expectedOutput, double learningRate) {
+	std::vector<double> output = CalculateOutput(trainingInputData);
+	
+	//std::cout << "A\n";
+	Layer& lastLayer = layers[layers.size() - 1];
+	for (int i = 0; i < lastLayer.numOfNodes; i++) {
+		lastLayer.nodeValues.push_back(CostDerivative(output[i], expectedOutput[i]) * SigmoidDerivative(lastLayer.weightedValues[i]));
+	}
+	//std::cout << "a\n";
+	lastLayer.UpdateGradient(layers[layers.size()-2].activatedValues);
+
+	//std::cout << "B\n";
+	for (int i = layers.size() - 2; i > 0; i--) {
+		layers[i].UpdateHiddenLayerNodeValues(layers[i + 1]);
+		layers[i].UpdateGradient(layers[i-1].activatedValues);
+	}
+
+	// Apply All Gradients
 	for (auto& layer : layers) {
 		for (int i = 0; i < layer.numOfNodes; i++) {
 			for (int j = 0; j < layer.numOfIncomingNodes; j++) {
@@ -89,4 +115,15 @@ double HyperbolicTangent(double input) {
 }
 double SiLU(double input) {
 	return input / (1 + exp(-input));
+}
+std::vector<double> Softmax(std::vector<double> input) {
+	std::vector<double> activatedOutput;
+	double sum = 0;
+	for (int i = 0; i < input.size(); i++) {
+		sum += exp(input[i]);
+	}
+	for (int i = 0; i < input.size(); i++) {
+		activatedOutput.push_back(exp(input[i]) / sum);
+	}
+	return activatedOutput;
 }
